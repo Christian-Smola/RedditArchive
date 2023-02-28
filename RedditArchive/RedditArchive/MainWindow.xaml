@@ -5,9 +5,20 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RedditArchive"
         mc:Ignorable="d"
-        Title="Reddit Archive" Height="450" Width="800" Loaded="RedditArchive_IsLoaded">
+        Title="Reddit Archive" Height="450" Width="800" Loaded="RedditArchive_IsLoaded" ResizeMode="CanMinimize">
     <Grid>
-        <DataGrid Margin="53,37,120,62"/>
-
+        <ComboBox HorizontalAlignment="Center" Margin="0,10,0,0" VerticalAlignment="Top" Width="180"/>
+        <DataGrid x:Name="MyDataGrid" Margin="10,37,10,35" AutoGenerateColumns="False" CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="160"/>
+                <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="160"/>
+                <DataGridTextColumn Header="Subreddit" Binding="{Binding Subreddit}" Width="Auto"/>
+                <DataGridTextColumn Header="Poster" Binding="{Binding Poster}" Width="Auto"/>
+                <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="Auto"/>
+                <DataGridHyperlinkColumn Header="Content Link" Binding="{Binding ContentLink}" Width="240"/>
+                <DataGridHyperlinkColumn Header="Comment Link" Binding="{Binding CommentLink}" Width="240"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <Button Content="Button" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="80"/>
     </Grid>
 </Window>

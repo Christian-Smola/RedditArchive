@@ -7,8 +7,18 @@
         mc:Ignorable="d"
         Title="Reddit Archive" Height="450" Width="800" Loaded="RedditArchive_IsLoaded" ResizeMode="CanMinimize">
     <Grid>
-        <ComboBox HorizontalAlignment="Center" Margin="0,10,0,0" VerticalAlignment="Top" Width="180"/>
-        <DataGrid x:Name="MyDataGrid" Margin="10,37,10,35" AutoGenerateColumns="False" CanUserAddRows="False">
+        <Label Content="Displayed Subreddit:" HorizontalAlignment="Left" Margin="186,8,0,0" VerticalAlignment="Top"/>
+        <ComboBox x:Name="cboDisplayedSubreddit" HorizontalAlignment="Center" Margin="0,10,0,0" VerticalAlignment="Top" Width="180" SelectionChanged="DisplayedSubreddit_SelectionChanged"/>
+        <DataGrid x:Name="MyDataGrid" Margin="10,37,10,35" AutoGenerateColumns="False" CanUserAddRows="False" AlternatingRowBackground="LightGray">
+            <DataGrid.Resources>
+                <Style TargetType="{x:Type DataGridColumnHeader}">
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Height" Value="24"/>
+                    <Setter Property="Background" Value="#FFBDBDBD"/>
+                    <Setter Property="BorderThickness" Value="0, 0, 1, 1"/>
+                    <Setter Property="BorderBrush" Value="Black"/>
+                </Style>
+            </DataGrid.Resources>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="160"/>
                 <DataGridTextColumn Header="Text" Binding="{Binding Text}" Width="160"/>

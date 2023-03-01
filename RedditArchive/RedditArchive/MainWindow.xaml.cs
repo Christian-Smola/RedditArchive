@@ -85,6 +85,7 @@ namespace RedditArchive
             public string CommentLink { get; set; }
         }
 
+        public bool IsLoaded = false;
         public Credentials MyCredentials;
         public SqlConnection SQLConn;
         public ObservableCollection<Post> PostsToDisplay = new ObservableCollection<Post>();
@@ -100,9 +101,47 @@ namespace RedditArchive
             EstablishSQLConn();
             //ImportSavedPostsFromReddit();
             LoadPosts();
+
+            IsLoaded = true;
         }
 
-        private void LoadCredentials()
+        private void DisplayedSubreddit_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded)
+                return;
+
+            PostsToDisplay.Clear();
+
+            string strSQL = "";
+
+            if (cboDisplayedSubreddit.SelectedIndex == 0)
+                strSQL = "Select * From RedditArchiveDemo";
+            else
+                strSQL = "Select * From RedditArchiveDemo Where Subreddit ='" + cboDisplayedSubreddit.SelectedValue.ToString() + "'";
+
+            SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                Post post = new Post();
+
+                post.Title = reader.GetString(0);
+                post.Text = reader.GetString(1);
+                post.Poster = reader.GetString(2);
+                post.Subreddit = reader.GetString(3);
+                post.Score = reader.GetInt32(4);
+                post.ContentLink = reader.GetString(5);
+                post.CommentLink = reader.GetString(6);
+
+                PostsToDisplay.Add(post);
+            }
+
+            reader.Close();
+        }
+
+            private void LoadCredentials()
         {
             string ProjectDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
@@ -143,6 +182,7 @@ namespace RedditArchive
         {
             try
             {
+                //Populates Datagrid
                 string strSQL = "Select * From RedditArchiveDemo";
 
                 SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
@@ -164,7 +204,27 @@ namespace RedditArchive
                     PostsToDisplay.Add(post);
                 }
 
+                reader.Close();
+
                 MyDataGrid.ItemsSource = PostsToDisplay;
+
+                //Populates Dropdown
+                cboDisplayedSubreddit.Items.Add("All");
+
+                strSQL = "Select Distinct Subreddit From RedditArchiveDemo";
+
+                cmd = new SqlCommand(strSQL, SQLConn);
+
+                reader = cmd.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    cboDisplayedSubreddit.Items.Add(reader.GetString(0));
+                }
+
+                reader.Close();
+
+                cboDisplayedSubreddit.SelectedIndex = 0;
             }
             catch (Exception ex)
             {

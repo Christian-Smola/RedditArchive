@@ -29,6 +29,6 @@
                 <DataGridHyperlinkColumn Header="Comment Link" Binding="{Binding CommentLink}" Width="240"/>
             </DataGrid.Columns>
         </DataGrid>
-        <Button Content="Button" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="80"/>
+        <Button Content="Import Old Posts" Click="btnLoadOldPosts_Clicked" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="110"/>
     </Grid>
 </Window>

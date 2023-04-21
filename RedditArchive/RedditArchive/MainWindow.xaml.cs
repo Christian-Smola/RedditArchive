@@ -63,6 +63,9 @@ namespace RedditArchive
 
         public class Post
         {
+            [JsonProperty("name")]
+            public string PostID { get; set; }
+
             [JsonProperty("title")]
             public string Title { get; set; }
 
@@ -99,10 +102,15 @@ namespace RedditArchive
         {
             LoadCredentials();
             EstablishSQLConn();
-            //ImportSavedPostsFromReddit();
+            ImportSavedPostsFromReddit("Before");
             LoadPosts();
 
             IsLoaded = true;
+        }
+
+        private void btnLoadOldPosts_Clicked(object sender, RoutedEventArgs e)
+        {
+            ImportSavedPostsFromReddit("After");
         }
 
         private void DisplayedSubreddit_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -115,9 +123,9 @@ namespace RedditArchive
             string strSQL = "";
 
             if (cboDisplayedSubreddit.SelectedIndex == 0)
-                strSQL = "Select * From RedditArchiveDemo";
+                strSQL = "Select Title, Text, Poster, Subreddit, Score, ContentLink, CommentLink From MyRedditArchiveDemo Order By LocalIndex";
             else
-                strSQL = "Select * From RedditArchiveDemo Where Subreddit ='" + cboDisplayedSubreddit.SelectedValue.ToString() + "'";
+                strSQL = "Select Title, Text, Poster, Subreddit, Score, ContentLink, CommentLink From MyRedditArchiveDemo Where Subreddit ='" + cboDisplayedSubreddit.SelectedValue.ToString() + "' Order By LocalIndex";
 
             SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
 
@@ -140,8 +148,8 @@ namespace RedditArchive
 
             reader.Close();
         }
-
-            private void LoadCredentials()
+        
+        private void LoadCredentials()
         {
             string ProjectDirectory = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
@@ -183,7 +191,7 @@ namespace RedditArchive
             try
             {
                 //Populates Datagrid
-                string strSQL = "Select * From RedditArchiveDemo";
+                string strSQL = "Select Title, Text, Poster, Subreddit, Score, ContentLink, CommentLink From MyRedditArchiveDemo Order By LocalIndex";
 
                 SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
 
@@ -211,7 +219,7 @@ namespace RedditArchive
                 //Populates Dropdown
                 cboDisplayedSubreddit.Items.Add("All");
 
-                strSQL = "Select Distinct Subreddit From RedditArchiveDemo";
+                strSQL = "Select Distinct Subreddit From MyRedditArchiveDemo";
 
                 cmd = new SqlCommand(strSQL, SQLConn);
 
@@ -232,13 +240,47 @@ namespace RedditArchive
             }
         }
 
-        private void ImportSavedPostsFromReddit()
+        private void ImportSavedPostsFromReddit(string strSuffix)
         {
             try
             {
-                //This section pulls saved posts from reddit using reddit's rest api
-                RestClient client = new RestClient("https://oauth.reddit.com/user/watchtower32/saved.json?limit=20");
+                string strSQL = "";
+                int StartingIndex = 0;
+                string strPostID = "";
 
+                if (strSuffix == "Before")
+                {
+                    strSQL = "Select Top(1) PostID From MyRedditArchiveDemo Order By LocalIndex";
+
+                    SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        strPostID = reader.GetString(0);
+                    }
+
+                    reader.Close();
+                }
+                else if (strSuffix == "After")
+                {
+                    strSQL = "Select Top(1) PostID, LocalIndex From MyRedditArchiveDemo Order By LocalIndex Desc";
+
+                    SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
+
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        strPostID = reader.GetString(0);
+                        StartingIndex = reader.GetInt32(1);
+                    }
+
+                    reader.Close();
+                }
+
+                RestClient client = new RestClient("https://oauth.reddit.com/user/" + MyCredentials.Username + "/saved.json?limit=20&" + strSuffix.ToLower() + "=" + strPostID);
                 RestRequest request = new RestRequest();
 
                 request.AddHeader("Authorization", "bearer " + MyCredentials.AccessToken);
@@ -252,12 +294,21 @@ namespace RedditArchive
                 foreach (PostContainer container in redditResponse.data.Containers)
                     posts.Add(container.post);
 
-                //This section then saves those posts to our local SQL database
-                string strSQL = "";
+                if (StartingIndex == 0 && posts.Count > 0)
+                    UpdatePostIndex(posts.Count);
 
+                //This section then saves those posts to our local SQL database
+                int i = 0;
                 foreach (Post post in posts)
                 {
-                    strSQL = "Insert Into RedditArchiveDemo(Title, Text, Poster, Subreddit, Score, ContentLink, CommentLink) Values(";
+                    strSQL = "Insert Into MyRedditArchiveDemo(PostID, LocalIndex, Title, Text, Poster, Subreddit, Score, ContentLink, CommentLink) Values(";
+
+                    strSQL += "'" + post.PostID.Replace("'", "''") + "',";
+
+                    if (StartingIndex == 0)
+                        strSQL += i + ", ";
+                    else
+                        strSQL += (StartingIndex + i) + ", ";
 
                     strSQL += "'" + post.Title.Replace("'", "''") + "', ";
                     strSQL += "'" + post.Text.Replace("'", "''") + "', ";
@@ -269,11 +320,41 @@ namespace RedditArchive
 
                     SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
                     cmd.ExecuteNonQuery();
+
+                    i++;
                 }
+
+                if (strSuffix == "After")
+                    foreach (Post post in posts)
+                        PostsToDisplay.Add(post);
             }
             catch(Exception ex)
             {
                 MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void UpdatePostIndex(int IncrementIndicesBy)
+        {
+            string strSQL = "Select LocalIndex From MyRedditArchiveDemo Order By LocalIndex Desc";
+
+            SqlCommand cmd = new SqlCommand(strSQL, SQLConn);
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            List<int> IndexList = new List<int>();
+
+            while (reader.Read())
+            {
+                IndexList.Add(reader.GetInt32(0));
+            }
+
+            reader.Close();
+
+            foreach (int i in IndexList)
+            {
+                strSQL = "Update MyRedditArchiveDemo Set LocalIndex = " + (i + IncrementIndicesBy) + " Where LocalIndex = " + i;
+                cmd = new SqlCommand(strSQL, SQLConn);
+                cmd.ExecuteNonQuery();
             }
         }
     }
